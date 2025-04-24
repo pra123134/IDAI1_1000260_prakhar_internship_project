@@ -1,11 +1,10 @@
 import streamlit as st
-import google.generativeai as genai
+import openai
 import time
 
 # ✅ Secure API Key Setup
-if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"]
-    genai.configure(api_key=api_key)
+if "OPENAI_API_KEY" in st.secrets:
+    openai.api_key = st.secrets["OPENAI_API_KEY"]
 else:
     st.error("⚠️ API Key is missing. Add your key to Streamlit Cloud → Settings → Secrets.")
     st.stop()
@@ -15,9 +14,13 @@ def get_ai_response(prompt, fallback="⚠️ AI response unavailable. Try again 
     retries = 0
     while retries < max_retries:
         try:
-            model = genai.GenerativeModel("gemini-1.5-pro")
-            response = model.generate_content(prompt)
-            return response.text.strip() if hasattr(response, "text") and response.text.strip() else fallback
+            response = openai.Completion.create(
+                model="gpt-4", 
+                prompt=prompt, 
+                max_tokens=500,
+                temperature=0.7
+            )
+            return response.choices[0].text.strip() if response.choices[0].text.strip() else fallback
         except Exception as e:
             retries += 1
             if retries >= max_retries:
