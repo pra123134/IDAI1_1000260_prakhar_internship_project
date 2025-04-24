@@ -1,5 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
+import time
 
 # ✅ Secure API Key Setup
 if "GOOGLE_API_KEY" in st.secrets:
@@ -10,21 +11,29 @@ else:
     st.stop()
 
 # 🔁 AI Utility
-def get_ai_response(prompt, fallback="⚠️ AI response unavailable. Try again later."):
-    try:
-        model = genai.GenerativeModel("gemini-2.5-pro")
-        response = model.generate_content(prompt)
-        return response.text.strip() if hasattr(response, "text") and response.text.strip() else fallback
-    except Exception as e:
-        return f"⚠️ Error: {str(e)}\n{fallback}"
+def get_ai_response(prompt, fallback="⚠️ AI response unavailable. Try again later.", max_retries=3):
+    retries = 0
+    while retries < max_retries:
+        try:
+            model = genai.GenerativeModel("gemini-2.5-pro")
+            response = model.generate_content(prompt)
+            return response.text.strip() if hasattr(response, "text") and response.text.strip() else fallback
+        except Exception as e:
+            retries += 1
+            if retries >= max_retries:
+                return f"⚠️ Error: {str(e)}\n{fallback}"
+            time.sleep(2)  # Wait before retrying to avoid hitting the API too quickly
 
-# 🔁 Scenario Generators
+# 🔁 Scenario Generators with caching
+@st.cache_data
 def generate_case_study(module_topic):
     return get_ai_response(f"Create a detailed event management case study for the topic: {module_topic}. Include realistic planning, coordination, stakeholder, and risk management challenges.")
 
+@st.cache_data
 def generate_hint(scenario):
     return get_ai_response(f"Provide a short hint to handle this event management scenario:\n\n{scenario}")
 
+@st.cache_data
 def generate_guidance(scenario):
     prompt = (
         f"Event Management Scenario:\n"
@@ -38,12 +47,15 @@ def generate_guidance(scenario):
     )
     return get_ai_response(prompt)
 
+@st.cache_data
 def generate_summary_notes(topic):
     return get_ai_response(f"Summarize the essential strategies and concepts in event management for the topic: {topic}. Use concise bullet points.")
 
+@st.cache_data
 def generate_quiz_question(topic):
     return get_ai_response(f"Create one MCQ quiz question with 4 options and the correct answer clearly marked for the topic: {topic}.")
 
+@st.cache_data
 def generate_peer_prompt(topic):
     return get_ai_response(f"Write a peer discussion prompt related to an event management topic: {topic}. It should invite open-ended responses and reflections.")
 
@@ -99,7 +111,7 @@ if "case_study" in st.session_state:
 
 # 🚧 Coming Soon
 st.sidebar.markdown("---")
-st.sidebar.info("""
+st.sidebar.info(""" 
 🎓 Certification Quiz: Practice with MCQs and reflections.
 💬 Peer Discussion: Invite open-ended insights from classmates.
 """)
