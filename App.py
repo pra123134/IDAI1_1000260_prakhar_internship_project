@@ -15,7 +15,7 @@ def get_ai_response(prompt, fallback="⚠️ AI response unavailable. Try again 
     retries = 0
     while retries < max_retries:
         try:
-            model = genai.GenerativeModel("gemini-2.5-pro")
+            model = genai.GenerativeModel("gemini-1.5-pro")
             response = model.generate_content(prompt)
             return response.text.strip() if hasattr(response, "text") and response.text.strip() else fallback
         except Exception as e:
