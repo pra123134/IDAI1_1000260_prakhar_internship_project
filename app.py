@@ -1,67 +1,29 @@
 import streamlit as st
 import google.generativeai as genai
 
-# ✅ Secure API Key Setup
-if "GOOGLE_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-else:
-    st.error("⚠️ API Key is missing. Add your key in Streamlit → Settings → Secrets.")
-    st.stop()
+# ---- Gemini Setup ----
+genai.configure(api_key="YOUR_GEMINI_API_KEY")  # Replace with your API key
+model = genai.GenerativeModel("gemini-pro")
 
-# 🔁 AI Utility
-def get_ai_response(prompt, fallback="⚠️ AI response unavailable. Try again later."):
-    try:
-        model = genai.GenerativeModel("gemini-1.5-pro")
-        response = model.generate_content(prompt)
-        if hasattr(response, "text") and response.text.strip():
-            return response.text.strip()
+# ---- App UI ----
+st.set_page_config(page_title="AI Case Studies App", layout="centered")
+st.title("📚 AI Case Studies App")
+
+# ---- User Input ----
+subject = st.selectbox("Select a subject", ["Math", "Science", "History", "Literature"])
+role = st.radio("Select your role", ["Student", "Teacher"])
+
+# ---- Prompt Construction ----
+if st.button("Generate Content"):
+    with st.spinner("Generating with Gemini 1.5 Pro..."):
+        if role == "Teacher":
+            prompt = f"Give 2 real-world case study examples with detailed explanations for a teacher to use in class for the subject: {subject}."
         else:
-            return fallback
-    except Exception as e:
-        return f"⚠️ Error: {str(e)}\n{fallback}"
+            prompt = f"Give 2 student-friendly case studies with quiz questions at the end for the subject: {subject}. Make them interactive and easy to understand."
 
-# Function to show the personalized menu
-def show_personalized_menu(preferences):
-    prompt = f"Suggest a personalized menu for a customer with dietary preferences: {preferences}. Include dishes with ingredients and nutritional information."
-    return get_ai_response(prompt)
-
-# Main Page for Restaurant Ordering
-def order_page():
-    st.title("Smart Restaurant Menu")
-    
-    # Get customer dietary preferences
-    preferences = st.text_input("Enter your dietary preferences (e.g., vegan, gluten-free, low-carb):")
-    
-    if preferences:
-        # Show the personalized menu based on customer preferences
-        st.subheader(f"Menu Suggestions for {preferences} Diet:")
-        personalized_menu = show_personalized_menu(preferences)
-        st.write(personalized_menu)
-
-    # Add functionality for placing the order
-    order = st.selectbox("Choose your dish:", ["Pizza", "Burger", "Pasta", "Salad", "Soup"])
-    quantity = st.number_input("Quantity", min_value=1, value=1)
-    
-    if st.button("Place Order"):
-        # Placeholder for order processing (could connect to payment API)
-        total_cost = quantity * 12.99  # Example cost per dish
-        st.write(f"Order Summary: {quantity} x {order} = ${total_cost:.2f}")
-        st.write("⚡ Your order is being processed!")
-        st.write("Thank you for ordering! 🎉")
-        
-# Main page to welcome and guide users
-def main():
-    st.sidebar.title("Restaurant Features")
-    menu = ["Order Food", "View Personalized Recommendations"]
-    choice = st.sidebar.radio("Select a page", menu)
-
-    if choice == "Order Food":
-        order_page()
-    elif choice == "View Personalized Recommendations":
-        preferences = st.text_input("Enter dietary preferences:")
-        if preferences:
-            personalized_recommendations = show_personalized_menu(preferences)
-            st.write(personalized_recommendations)
-
-if __name__ == "__main__":
-    main()
+        try:
+            response = model.generate_content(prompt)
+            st.success("Generated successfully!")
+            st.markdown(response.text)
+        except Exception as e:
+            st.error(f"Error: {e}")
