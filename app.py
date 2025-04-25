@@ -1,6 +1,5 @@
 import streamlit as st
 import google.generativeai as genai
-import time
 
 # ✅ Secure API Key Setup
 if "GOOGLE_API_KEY" in st.secrets:
@@ -9,10 +8,9 @@ else:
     st.error("⚠️ API Key is missing. Add your key in Streamlit → Settings → Secrets.")
     st.stop()
 
-# 🔁 AI Utility with Error Handling & Timeout
+# 🔁 AI Utility
 def get_ai_response(prompt, fallback="⚠️ AI response unavailable. Try again later."):
     try:
-        # Ensure AI call times out or gives an appropriate response time
         model = genai.GenerativeModel("gemini-1.5-pro")
         response = model.generate_content(prompt)
         if hasattr(response, "text") and response.text.strip():
@@ -20,9 +18,7 @@ def get_ai_response(prompt, fallback="⚠️ AI response unavailable. Try again 
         else:
             return fallback
     except Exception as e:
-        # Improved error handling with specific messages
-        st.error(f"⚠️ Error: {str(e)}")
-        return fallback
+        return f"⚠️ Error: {str(e)}\n{fallback}"
 
 # 🔁 Scenario Generators
 def generate_case_study(topic):
@@ -65,11 +61,68 @@ modules = {
     "Sustainable & Inclusive Events": "Eco-friendly practices and ensuring diversity and accessibility.",
 }
 
-# ✅ UI
+# ✅ UI Configuration
 st.set_page_config(page_title="Event Manager AI Course", layout="centered")
 st.title("🎓 Event Manager Master Course (AI-Enhanced)")
 
+# Sidebar for module selection and additional features
 st.sidebar.header("📚 Event Management Modules")
 selected_module = st.sidebar.selectbox("Select a Module", list(modules.keys()))
 
-# Sidebar bottom section —
+# Sidebar for additional info and upcoming features
+st.sidebar.markdown("---")
+st.sidebar.info("""
+🎓 Certification Quiz: Practice with MCQs and reflections.  
+💬 Peer Discussion: Invite open-ended insights from classmates.
+""")
+
+# Module Info Display
+st.subheader(f"📘 {selected_module}")
+st.markdown(f"_{modules[selected_module]}_")
+
+# ✅ Initialize session state for case study if not already initialized
+if "case_study" not in st.session_state:
+    st.session_state.case_study = ""
+
+# Case Study Generator Button
+if st.button("🎯 Generate Event Case Study"):
+    st.session_state.case_study = generate_case_study(selected_module)
+
+# If case study is generated, display it with further options
+if st.session_state.case_study:
+    st.markdown("---")
+    st.subheader("📌 Event Management Case Study")
+    st.write(st.session_state.case_study)
+
+    # AI-generated Hint
+    st.subheader("💡 Hint from AI")
+    st.info(generate_hint(st.session_state.case_study))
+
+    # AI-generated Strategy Guide
+    st.subheader("🧠 AI Strategy Guide")
+    st.write(generate_guidance(st.session_state.case_study))
+
+    # Reflection Journal
+    st.subheader("📝 Reflection Journal")
+    user_reflection = st.text_area("How would you handle this scenario? Relate it to real-world experience or theory.", height=150)
+
+    # Summary Notes from AI
+    st.subheader("📒 Summary Notes")
+    st.markdown(generate_summary_notes(selected_module))
+
+    # Certification Quiz from AI
+    st.subheader("🎓 Certification Quiz")
+    quiz = generate_quiz_question(selected_module)
+    st.markdown(quiz)
+
+    # Peer Discussion Prompt from AI
+    st.subheader("💬 Peer Discussion Prompt")
+    discussion_prompt = generate_peer_prompt(selected_module)
+    st.info(discussion_prompt)
+
+# 🚧 Coming Soon Section for future updates
+st.sidebar.markdown("---")
+st.sidebar.info("""
+🎓 Certification Quiz: Practice with MCQs and reflections.  
+💬 Peer Discussion: Invite open-ended insights from classmates.
+""")
