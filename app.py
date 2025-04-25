@@ -20,109 +20,48 @@ def get_ai_response(prompt, fallback="⚠️ AI response unavailable. Try again 
     except Exception as e:
         return f"⚠️ Error: {str(e)}\n{fallback}"
 
-# 🔁 Scenario Generators
-def generate_case_study(topic):
-    return get_ai_response(f"Create a detailed event management case study for the topic: {topic}. Include realistic planning, coordination, stakeholder, and risk management challenges.")
-
-def generate_hint(scenario):
-    return get_ai_response(f"Provide a short hint to handle this event management scenario:\n\n{scenario}")
-
-def generate_guidance(scenario):
-    prompt = (
-        f"Event Management Scenario:\n"
-        f"{scenario}\n\n"
-        f"You are a professional event manager. Provide:\n"
-        f"- Step-by-step strategy to resolve the situation\n"
-        f"- Key decisions to make\n"
-        f"- Industry best practices\n"
-        f"- Common pitfalls\n"
-        f"- A critical thinking question for students"
-    )
+# Function to show the personalized menu
+def show_personalized_menu(preferences):
+    prompt = f"Suggest a personalized menu for a customer with dietary preferences: {preferences}. Include dishes with ingredients and nutritional information."
     return get_ai_response(prompt)
 
-def generate_summary_notes(topic):
-    return get_ai_response(f"Summarize the essential strategies and concepts in event management for the topic: {topic}. Use concise bullet points.")
+# Main Page for Restaurant Ordering
+def order_page():
+    st.title("Smart Restaurant Menu")
+    
+    # Get customer dietary preferences
+    preferences = st.text_input("Enter your dietary preferences (e.g., vegan, gluten-free, low-carb):")
+    
+    if preferences:
+        # Show the personalized menu based on customer preferences
+        st.subheader(f"Menu Suggestions for {preferences} Diet:")
+        personalized_menu = show_personalized_menu(preferences)
+        st.write(personalized_menu)
 
-def generate_quiz_question(topic):
-    return get_ai_response(f"Create one MCQ quiz question with 4 options and the correct answer clearly marked for the topic: {topic}.")
+    # Add functionality for placing the order
+    order = st.selectbox("Choose your dish:", ["Pizza", "Burger", "Pasta", "Salad", "Soup"])
+    quantity = st.number_input("Quantity", min_value=1, value=1)
+    
+    if st.button("Place Order"):
+        # Placeholder for order processing (could connect to payment API)
+        total_cost = quantity * 12.99  # Example cost per dish
+        st.write(f"Order Summary: {quantity} x {order} = ${total_cost:.2f}")
+        st.write("⚡ Your order is being processed!")
+        st.write("Thank you for ordering! 🎉")
+        
+# Main page to welcome and guide users
+def main():
+    st.sidebar.title("Restaurant Features")
+    menu = ["Order Food", "View Personalized Recommendations"]
+    choice = st.sidebar.radio("Select a page", menu)
 
-def generate_peer_prompt(topic):
-    return get_ai_response(f"Write a peer discussion prompt related to an event management topic: {topic}. It should invite open-ended responses and reflections.")
+    if choice == "Order Food":
+        order_page()
+    elif choice == "View Personalized Recommendations":
+        preferences = st.text_input("Enter dietary preferences:")
+        if preferences:
+            personalized_recommendations = show_personalized_menu(preferences)
+            st.write(personalized_recommendations)
 
-# ✅ Master Course Structure
-modules = {
-    "Introduction to Event Management": "Scope, types, and career pathways in event planning and coordination.",
-    "Planning & Coordination": "Timelines, checklists, budgeting, and logistics.",
-    "Venue & Vendor Selection": "Negotiations, contracts, permits, and location planning.",
-    "Marketing & Promotion": "Campaign planning, social media strategies, and public relations.",
-    "Stakeholder & Client Communication": "Briefing clients, managing expectations, and post-event feedback.",
-    "Risk Management & Contingency Planning": "Emergency preparedness, legal considerations, and backup plans.",
-    "Team & Volunteer Management": "Role assignment, team briefing, motivation, and coordination.",
-    "Sustainable & Inclusive Events": "Eco-friendly practices and ensuring diversity and accessibility.",
-}
-
-# ✅ UI Configuration
-st.set_page_config(page_title="Event Manager AI Course", layout="centered")
-st.title("🎓 Event Manager Master Course (AI-Enhanced)")
-
-# Sidebar for module selection and additional features
-st.sidebar.header("📚 Event Management Modules")
-selected_module = st.sidebar.selectbox("Select a Module", list(modules.keys()))
-
-# Sidebar for additional info and upcoming features
-st.sidebar.markdown("---")
-st.sidebar.info("""
-🎓 Certification Quiz: Practice with MCQs and reflections.  
-💬 Peer Discussion: Invite open-ended insights from classmates.
-""")
-
-# Module Info Display
-st.subheader(f"📘 {selected_module}")
-st.markdown(f"_{modules[selected_module]}_")
-
-# ✅ Initialize session state for case study if not already initialized
-if "case_study" not in st.session_state:
-    st.session_state.case_study = ""
-
-# Case Study Generator Button
-if st.button("🎯 Generate Event Case Study"):
-    st.session_state.case_study = generate_case_study(selected_module)
-
-# If case study is generated, display it with further options
-if st.session_state.case_study:
-    st.markdown("---")
-    st.subheader("📌 Event Management Case Study")
-    st.write(st.session_state.case_study)
-
-    # AI-generated Hint
-    st.subheader("💡 Hint from AI")
-    st.info(generate_hint(st.session_state.case_study))
-
-    # AI-generated Strategy Guide
-    st.subheader("🧠 AI Strategy Guide")
-    st.write(generate_guidance(st.session_state.case_study))
-
-    # Reflection Journal
-    st.subheader("📝 Reflection Journal")
-    user_reflection = st.text_area("How would you handle this scenario? Relate it to real-world experience or theory.", height=150)
-
-    # Summary Notes from AI
-    st.subheader("📒 Summary Notes")
-    st.markdown(generate_summary_notes(selected_module))
-
-    # Certification Quiz from AI
-    st.subheader("🎓 Certification Quiz")
-    quiz = generate_quiz_question(selected_module)
-    st.markdown(quiz)
-
-    # Peer Discussion Prompt from AI
-    st.subheader("💬 Peer Discussion Prompt")
-    discussion_prompt = generate_peer_prompt(selected_module)
-    st.info(discussion_prompt)
-
-# 🚧 Coming Soon Section for future updates
-st.sidebar.markdown("---")
-st.sidebar.info("""
-🎓 Certification Quiz: Practice with MCQs and reflections.  
-💬 Peer Discussion: Invite open-ended insights from classmates.
-""")
+if __name__ == "__main__":
+    main()
