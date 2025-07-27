@@ -1,2 +1,9 @@
+opencv-python
+numpy
 streamlit
-google.generativeai
+tensorflow
+scikit-learn
+ultralytics
+requests
+Pillow
+google-generativeai
