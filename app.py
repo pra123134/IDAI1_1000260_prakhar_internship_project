@@ -4,39 +4,40 @@ import numpy as np
 import matplotlib.pyplot as plt
 from ultralytics import YOLO
 
-# Set Streamlit page configuration
 st.set_page_config(page_title="Simple YOLOv8 Waste Detector", layout="centered")
 
-# Load YOLOv8 model only once
 @st.cache_resource
 def load_model():
     return YOLO('yolov8n.pt')
 
 model = load_model()
 
-# Object detection using YOLO
 def detect_objects(image):
-    results = model(np.array(image))
+    results = model(image)
     return results[0].plot(show_conf=False)
 
-# Streamlit App
-st.title("🗑️ Simple YOLOv8 Waste Detector")
-st.markdown("Upload an image and YOLOv8 will detect objects.")
+def main():
+    st.title("🗒️ Simple Waste Detection with YOLOv8")
+    st.write("Upload an image to detect waste objects using YOLOv8 Nano model.")
 
-uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("📄 Upload Image", type=["jpg", "jpeg", "png"])
 
-if uploaded_file:
-    try:
-        image = Image.open(uploaded_file).convert("RGB")
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+    if uploaded_file is not None:
+        try:
+            image = Image.open(uploaded_file).convert("RGB")
+            image_np = np.array(image)
+            st.image(image, caption="📸 Uploaded Image", use_column_width=True)
 
-        st.subheader("🔍 Detection Result")
-        result_img = detect_objects(image)
+            st.subheader("🔍 YOLOv8 Detection Output")
+            result_img = detect_objects(image_np)
 
-        fig, ax = plt.subplots()
-        ax.imshow(result_img)
-        ax.axis("off")
-        st.pyplot(fig)
+            fig, ax = plt.subplots()
+            ax.imshow(result_img)
+            ax.axis("off")
+            st.pyplot(fig)
 
-    except Exception as e:
-        st.error(f"Error while processing image: {e}")
+        except Exception as e:
+            st.error(f"❌ Failed to process image: {e}")
+
+if __name__ == "__main__":
+    main()
