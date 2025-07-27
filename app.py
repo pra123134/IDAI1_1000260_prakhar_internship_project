@@ -1,8 +1,10 @@
-# SmartWasteAI Project Code (YOLOv8 + Gemini 2.5 Pro API Integration)
+# SmartWasteAI Project Code (YOLOv8 + Gemini 2.5 Pro API Integration with Matplotlib)
 
-import cv2
 import numpy as np
 import streamlit as st
+from PIL import Image
+import io
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications import MobileNetV2
@@ -57,9 +59,7 @@ reinforcement_feedback = {
     'radioactive': 'Radioactive'
 }
 
-known_embeddings = {
-    label: None for label in waste_map
-}
+known_embeddings = {label: None for label in waste_map}
 
 def initialize_known_embeddings(dataset_path):
     for label in waste_map:
@@ -71,31 +71,29 @@ def initialize_known_embeddings(dataset_path):
         for file in os.listdir(folder):
             if file.lower().endswith(('jpg', 'jpeg', 'png')):
                 path = os.path.join(folder, file)
-                image = cv2.imread(path)
-                if image is None:
+                try:
+                    img = Image.open(path).resize((224, 224)).convert('RGB')
+                    img_array = preprocess_input(np.expand_dims(np.array(img).astype(np.float32), axis=0))
+                    embedding = feature_extractor.predict(img_array, verbose=0)
+                    vectors.append(embedding[0])
+                    count += 1
+                    if count >= 5:
+                        break
+                except:
                     continue
-                image = cv2.resize(image, (224, 224))
-                img_array = preprocess_input(image.astype(np.float32))
-                img_array = np.expand_dims(img_array, axis=0)
-                embedding = feature_extractor.predict(img_array, verbose=0)
-                vectors.append(embedding[0])
-                count += 1
-                if count >= 5:
-                    break
         if vectors:
             known_embeddings[label] = np.mean(vectors, axis=0)
 
 def preprocess_image(image):
-    image = cv2.resize(image, (224, 224))
-    image = image.astype("float32") / 255.0
+    image = image.resize((224, 224)).convert('RGB')
+    image = np.array(image).astype("float32") / 255.0
     image = img_to_array(image)
     image = np.expand_dims(image, axis=0)
     return image
 
 def extract_embedding(image):
-    img = cv2.resize(image, (224, 224))
-    img = preprocess_input(img.astype(np.float32))
-    img = np.expand_dims(img, axis=0)
+    image = image.resize((224, 224)).convert('RGB')
+    img = preprocess_input(np.expand_dims(np.array(image).astype(np.float32), axis=0))
     embedding = feature_extractor.predict(img, verbose=0)
     return embedding[0]
 
@@ -103,15 +101,14 @@ def is_anomalous(confidence, threshold=35.0):
     return confidence < threshold
 
 def query_gemini_api(image):
-    _, img_encoded = cv2.imencode('.jpg', image)
-    b64_image = base64.b64encode(img_encoded).decode('utf-8')
+    buffered = io.BytesIO()
+    image.save(buffered, format="JPEG")
+    b64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
     payload = {
         "contents": [
             {
                 "parts": [
-                    {
-                        "text": "Classify this waste and suggest appropriate disposal category and bin color."
-                    },
+                    {"text": "Classify this waste and suggest appropriate disposal category and bin color."},
                     {
                         "inlineData": {
                             "mimeType": "image/jpeg",
@@ -154,6 +151,14 @@ def predict_waste(image):
     bin_color = bin_map.get(category, 'Manual Sorting Required')
     return predicted_label, category, bin_color, confidence
 
+def display_yolo_predictions(image):
+    results = yolo_model(np.array(image))
+    annotated = results[0].plot(show_conf=False)
+    fig, ax = plt.subplots()
+    ax.imshow(annotated)
+    ax.axis("off")
+    st.pyplot(fig)
+
 def main():
     st.title("SmartWasteAI: Gemini-Enhanced AI Waste Sorting System")
     st.markdown("Upload a waste image. The system will detect, classify, and recommend a disposal bin.")
@@ -163,48 +168,23 @@ def main():
         st.success("Known embeddings initialized.")
     uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
     if uploaded_file is not None:
-        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-        image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-        if image is None:
-            st.error("Failed to decode image. Please try another file.")
-            return
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        st.image(image_rgb, caption="Uploaded Image", use_column_width=True)
-        results = yolo_model(image_rgb)
-        annotated_frame = results[0].plot()
-        st.image(annotated_frame, caption="Detected Waste Items")
-        predicted_label, category, bin_color, confidence = predict_waste(image_rgb)
-        st.subheader("Prediction Result")
-        st.write(f"**Predicted Label**: {predicted_label}")
-        st.write(f"**Category**: {category}")
-        st.write(f"**Recommended Bin**: {bin_color}")
-        st.write(f"**Confidence Score**: {confidence:.2f}%")
-        if is_anomalous(confidence) or category == 'Unknown':
-            st.warning("Low confidence or unknown category. Gemini API used.")
-        feedback = st.radio("Was this prediction correct?", ("Yes", "No"))
-        if feedback == "No":
-            st.info("Model will log this feedback for retraining suggestions.")
-
-def test_model_on_directory(test_dir):
-    true_labels = []
-    predictions = []
-    class_names = list(waste_map.keys())
-    for class_name in os.listdir(test_dir):
-        class_folder = os.path.join(test_dir, class_name)
-        if not os.path.isdir(class_folder):
-            continue
-        for image_file in os.listdir(class_folder):
-            image_path = os.path.join(class_folder, image_file)
-            image = cv2.imread(image_path)
-            if image is None:
-                continue
-            label, _, _, _ = predict_waste(image)
-            true_labels.append(class_name)
-            predictions.append(label)
-    acc = accuracy_score(true_labels, predictions)
-    cm = confusion_matrix(true_labels, predictions, labels=class_names)
-    print("Accuracy:", acc)
-    print("Confusion Matrix:\n", cm)
+        try:
+            image = Image.open(uploaded_file).convert("RGB")
+            st.image(image, caption="Uploaded Image", use_column_width=True)
+            display_yolo_predictions(image)
+            predicted_label, category, bin_color, confidence = predict_waste(image)
+            st.subheader("Prediction Result")
+            st.write(f"**Predicted Label**: {predicted_label}")
+            st.write(f"**Category**: {category}")
+            st.write(f"**Recommended Bin**: {bin_color}")
+            st.write(f"**Confidence Score**: {confidence:.2f}%")
+            if is_anomalous(confidence) or category == 'Unknown':
+                st.warning("Low confidence or unknown category. Gemini API used.")
+            feedback = st.radio("Was this prediction correct?", ("Yes", "No"))
+            if feedback == "No":
+                st.info("Model will log this feedback for retraining suggestions.")
+        except Exception as e:
+            st.error(f"Failed to process the uploaded image. Error: {str(e)}")
 
 if __name__ == "__main__":
     main()
